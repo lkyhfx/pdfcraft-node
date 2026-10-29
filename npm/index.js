@@ -18,6 +18,7 @@ function integer(value, fallback, max, name) {
 function options(o = {}) {
   if (!o || typeof o !== 'object' || Array.isArray(o)) throw error('INVALID_ARGUMENT', 'options must be an object')
   if (o.signal !== undefined && !(o.signal instanceof AbortSignal)) throw error('INVALID_ARGUMENT', 'signal must be an AbortSignal')
+  if (o.signal?.aborted) throw error('CANCELLED', 'operation cancelled')
   return { ...o, maxInputBytes: integer(o.maxInputBytes, INPUT, INPUT, 'maxInputBytes'), maxOutputBytes: integer(o.maxOutputBytes, OUTPUT, OUTPUT, 'maxOutputBytes'), timeoutMs: integer(o.timeoutMs, 120000, 300000, 'timeoutMs') }
 }
 function filename(p) {
@@ -28,6 +29,7 @@ function snapshot(b, max) {
   if (!(b instanceof Uint8Array)) throw error('INVALID_ARGUMENT', 'input must be Buffer or Uint8Array')
   if (b.buffer instanceof SharedArrayBuffer) throw error('INVALID_ARGUMENT', 'shared input memory is unsupported')
   if (b.byteLength > max) throw error('INPUT_TOO_LARGE', 'input exceeds limit')
+  if (queue.length >= 16 || retained + b.byteLength > INPUT) throw error('BUSY', 'native queue capacity exceeded')
   return Buffer.from(b)
 }
 function drain() {
@@ -56,7 +58,7 @@ function schedule(run, signal, bytes) {
 function execute(request, o) {
   return new Promise((resolve, reject) => {
     if (o.signal?.aborted) return reject(error('CANCELLED', 'operation cancelled'))
-    const env = { ...process.env, UV_THREADPOOL_SIZE: '1', MALLOC_ARENA_MAX: '2' }
+    const env = { ...process.env, UV_THREADPOOL_SIZE: '1', RAYON_NUM_THREADS: '1', MALLOC_ARENA_MAX: '2' }
     delete env.NODE_TEST_CONTEXT
     const child = fork(path.join(__dirname, 'worker.js'), [], {
       stdio: ['ignore', 'ignore', 'ignore', 'ipc'], execArgv: ['--max-old-space-size=128'],
@@ -89,9 +91,11 @@ function execute(request, o) {
 async function run(op, sources, destinations, extra, o) {
   const bytes = sources.reduce((n, s) => n + (Buffer.isBuffer(s) ? s.length : 0), 0)
   return schedule(async () => {
-    const temp = await fs.mkdtemp(path.join(os.tmpdir(), 'pdfcraft-node-'))
+    let temp
     const stages = []
+    const published = []
     try {
+      temp = await fs.mkdtemp(path.join(os.tmpdir(), 'pdfcraft-node-'))
       if (o.signal?.aborted) throw error('CANCELLED', 'operation cancelled')
       const inputs = []
       for (const [i, s] of sources.entries()) {
@@ -106,6 +110,16 @@ async function run(op, sources, destinations, extra, o) {
       const result = await execute({ op, inputs, outputs, maxInputBytes: o.maxInputBytes, maxOutputBytes: o.maxOutputBytes, ...extra }, o)
       if (o.signal?.aborted) throw error('CANCELLED', 'operation cancelled')
       if (!destinations.length) return result
+      if (op === 'batches') {
+        const manifest = []
+        for (const item of result) {
+          const destination = destinations[item.index]
+          await fs.rename(outputs[item.index], destination)
+          published.push(destination)
+          manifest.push({ path: destination, start: item.start, end: item.end, bytes: item.bytes })
+        }
+        return manifest
+      }
       const buffers = []
       for (const [i, destination] of destinations.entries()) {
         if (destination) await fs.rename(outputs[i], destination)
@@ -113,11 +127,12 @@ async function run(op, sources, destinations, extra, o) {
       }
       return destinations.every(Boolean) ? undefined : buffers.length === 1 ? buffers[0] : buffers
     } catch (e) {
+      await Promise.all(published.map(p => fs.rm(p, { force: true }).catch(() => {})))
       if (e.code?.startsWith('ERR_PDFCRAFT_')) throw e
       throw error('IO', e.message)
     } finally {
       await Promise.all(stages.map(p => fs.rm(p, { force: true }).catch(() => {})))
-      await fs.rm(temp, { recursive: true, force: true })
+      if (temp) await fs.rm(temp, { recursive: true, force: true })
     }
   }, o.signal, bytes)
 }
@@ -134,4 +149,102 @@ exports.compressPdf = async (input, opts) => {
 exports.compressPdfFile = async (input, output, opts) => {
   const [o, extra] = compressOptions(opts)
   return run('compress', [filename(input)], [filename(output)], extra, o)
+}
+
+function pages(value) {
+  if (!Array.isArray(value) || !value.length || value.length > 10000 || value.some(p => !Number.isInteger(p) || p < 1 || p > 10000)) throw error('PAGE_RANGE', 'provide 1..10000 integer page numbers')
+  return [...value]
+}
+function ranges(value) {
+  if (!Array.isArray(value) || !value.length || value.length > 128) throw error('PAGE_RANGE', 'provide 1..128 inclusive ranges')
+  return value.map(r => {
+    if (!r || !Number.isInteger(r.start) || !Number.isInteger(r.end) || r.start < 1 || r.end < r.start || r.end > 10000) throw error('PAGE_RANGE', 'invalid page range')
+    return { start: r.start, end: r.end }
+  })
+}
+function sources(value, o, files) {
+  if (!Array.isArray(value) || !value.length || value.length > 128) throw error('INVALID_ARGUMENT', 'provide 1..128 inputs')
+  if (!files && value.reduce((n,b) => n + (b?.byteLength || 0), 0) > o.maxInputBytes) throw error('INPUT_TOO_LARGE', 'aggregate input exceeds limit')
+  if (!files && retained + value.reduce((n,b) => n + (b?.byteLength || 0), 0) > INPUT) throw error('BUSY', 'native queue capacity exceeded')
+  return value.map(b => files ? filename(b) : snapshot(b, o.maxInputBytes))
+}
+exports.getPdfInfo = async (input, opts) => {
+  const o = options(opts)
+  return run('info', [snapshot(input, o.maxInputBytes)], [], {}, o)
+}
+exports.getPdfInfoFile = async (input, opts) => {
+  const o = options(opts)
+  return run('info', [filename(input)], [], {}, o)
+}
+exports.mergePdfs = async (inputs, opts) => {
+  const o = options(opts)
+  return run('merge', sources(inputs, o, false), [null], {}, o)
+}
+exports.mergePdfFiles = async (inputs, output, opts) => {
+  const o = options(opts)
+  return run('merge', sources(inputs, o, true), [filename(output)], {}, o)
+}
+exports.selectPdfPages = async (input, selected, opts) => {
+  const o = options(opts), list = pages(selected)
+  return run('select', [snapshot(input, o.maxInputBytes)], [null], { pages: list }, o)
+}
+exports.removePdfPages = async (input, selected, opts) => {
+  const o = options(opts), list = pages(selected)
+  return run('remove', [snapshot(input, o.maxInputBytes)], [null], { pages: list }, o)
+}
+exports.replacePdfPages = async (input, replacement, selected, opts) => {
+  const o = options(opts), list = pages(selected)
+  return run('replace', sources([input, replacement], o, false), [null], { pages: list }, o)
+}
+exports.splitPdf = async (input, selected, opts) => {
+  const o = options(opts), list = ranges(selected)
+  const result = await run('split', [snapshot(input, o.maxInputBytes)], list.map(() => null), { ranges: list }, o)
+  return Array.isArray(result) ? result : [result]
+}
+exports.extractPdfPagesFile = async (input, output, selected, opts) => {
+  const o = options(opts), list = pages(selected)
+  return run('select', [filename(input)], [filename(output)], { pages: list }, o)
+}
+exports.extractPdfRangesFile = async (input, outputDirectory, selected, opts) => {
+  const o = options(opts), list = ranges(selected)
+  const maxBatchBytes = integer(o.maxBatchBytes, o.maxOutputBytes, o.maxOutputBytes, 'maxBatchBytes')
+  const maxRangePages = integer(o.maxRangePages, 128, 128, 'maxRangePages')
+  const maxOutputs = integer(o.maxOutputs, 128, 128, 'maxOutputs')
+  const dir = filename(outputDirectory), prefix = `pdfcraft-${randomUUID()}`
+  const destinations = Array.from({ length: maxOutputs }, (_,i) => path.join(dir, `${prefix}-${i + 1}.pdf`))
+  return run('batches', [filename(input)], destinations, { ranges: list, maxBatchBytes, maxRangePages }, o)
+}
+function renderOptions(opts) {
+  const o = options(opts)
+  const extra = {
+    maxWidth: integer(o.maxWidth, 8192, 8192, 'maxWidth'),
+    maxHeight: integer(o.maxHeight, 8192, 8192, 'maxHeight'),
+    maxPixels: integer(o.maxPixels, 32000000, 32000000, 'maxPixels'),
+  }
+  if (o.transparent !== undefined && typeof o.transparent !== 'boolean') throw error('INVALID_ARGUMENT', 'transparent must be boolean')
+  extra.transparent = o.transparent ?? false
+  return [o, extra]
+}
+exports.renderPdfPage = async (input, page, opts) => {
+  const [o, extra] = renderOptions(opts)
+  const dpi = o.dpi ?? 144
+  if (!Number.isFinite(dpi) || dpi <= 0 || dpi > 1200) throw error('INVALID_ARGUMENT', 'DPI must be >0 and <=1200')
+  return run('render', [snapshot(input, o.maxInputBytes)], [null], { ...extra, pages: pages([page]), dpi }, o)
+}
+exports.renderPdfPageFile = async (input, page, output, opts) => {
+  const [o, extra] = renderOptions(opts)
+  const dpi = o.dpi ?? 144
+  if (!Number.isFinite(dpi) || dpi <= 0 || dpi > 1200) throw error('INVALID_ARGUMENT', 'DPI must be >0 and <=1200')
+  return run('render', [filename(input)], [filename(output)], { ...extra, pages: pages([page]), dpi }, o)
+}
+exports.renderSvgToPng = async (input, opts) => {
+  const [o, extra] = renderOptions(opts)
+  const max = Math.min(o.maxInputBytes, 8 * 1024 * 1024)
+  if (typeof input === 'string') {
+    if (Buffer.byteLength(input) > max) throw error('INPUT_TOO_LARGE', 'SVG input exceeds limit')
+    input = Buffer.from(input)
+  }
+  if (o.width !== undefined) extra.width = integer(o.width, undefined, 8192, 'width')
+  if (o.height !== undefined) extra.height = integer(o.height, undefined, 8192, 'height')
+  return run('svg', [snapshot(input, max)], [null], extra, o)
 }

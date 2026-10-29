@@ -1,0 +1,73 @@
+[
+  {
+    "name": "chinese.pdf",
+    "inputBytes": 11277,
+    "operations": [
+      {
+        "ms": 86,
+        "peakTreeRssBytes": 108339200,
+        "exit": 0,
+        "engine": "pdfcraft",
+        "mode": "lossless",
+        "bytes": 10404,
+        "textEqual": true
+      },
+      {
+        "ms": 58,
+        "peakTreeRssBytes": 29696000,
+        "exit": 0,
+        "engine": "ghostscript-control",
+        "mode": "lossless",
+        "bytes": 10731
+      },
+      {
+        "ms": 81,
+        "peakTreeRssBytes": 108380160,
+        "exit": 0,
+        "engine": "pdfcraft",
+        "mode": "balanced",
+        "bytes": 10404,
+        "textEqual": true
+      },
+      {
+        "ms": 55,
+        "peakTreeRssBytes": 29298688,
+        "exit": 0,
+        "engine": "ghostscript-control",
+        "mode": "balanced",
+        "bytes": 10737
+      },
+      {
+        "ms": 80,
+        "peakTreeRssBytes": 108417024,
+        "exit": 0,
+        "engine": "pdfcraft",
+        "mode": "strong",
+        "bytes": 10404,
+        "textEqual": true
+      },
+      {
+        "ms": 58,
+        "peakTreeRssBytes": 29667328,
+        "exit": 0,
+        "engine": "ghostscript-control",
+        "mode": "strong",
+        "bytes": 10738
+      },
+      {
+        "ms": 80,
+        "peakTreeRssBytes": 111837184,
+        "exit": 0,
+        "engine": "pdfcraft",
+        "mode": "render-72dpi"
+      },
+      {
+        "ms": 16,
+        "peakTreeRssBytes": 12070912,
+        "exit": 0,
+        "engine": "mupdf-control",
+        "mode": "render-72dpi"
+      }
+    ]
+  }
+]

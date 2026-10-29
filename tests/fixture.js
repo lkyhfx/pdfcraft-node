@@ -1,13 +1,13 @@
 'use strict'
 // Minimal deterministic fixtures only; production PDF parsing/writing stays in Rust.
-function pdf({ version = '1.7', signed = false, encrypted = false, rich = false, image = false } = {}) {
+function pdf({ version = '1.7', signed = false, encrypted = false, rich = false, tagged = true, image = false, font = 'Helvetica', rotation = 0, userUnit = 1 } = {}) {
   const objects = [
-    `<< /Type /Catalog /Pages 2 0 R ${rich ? '/Outlines 9 0 R /AcroForm << /Fields [11 0 R] >> /Names << /EmbeddedFiles << /Names [(note.txt) 12 0 R] >> >> /Metadata 14 0 R /StructTreeRoot 15 0 R /OCProperties << /OCGs [16 0 R] /D << /ON [16 0 R] >> >>' : ''} >>`,
+    `<< /Type /Catalog /Pages 2 0 R ${rich ? `/Outlines 9 0 R /AcroForm << /Fields [11 0 R] >> /Names << /EmbeddedFiles << /Names [(note.txt) 12 0 R] >> >> /Metadata 14 0 R ${tagged ? '/StructTreeRoot 15 0 R' : ''} /OCProperties << /OCGs [16 0 R] /D << /ON [16 0 R] >> >>` : ''} >>`,
     '<< /Type /Pages /Kids [3 0 R 5 0 R 7 0 R] /Count 3 >>',
   ]
   for (let i = 0; i < 3; i++) {
     const content = `BT /F1 12 Tf 10 20 Td (Page ${i + 1}) Tj ET\n` + (image ? 'q 100 0 0 100 0 0 cm /Im1 Do Q\n' : '') + '% padding for compression\n'.repeat(5000)
-    objects.push(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${200 + i * 100} 400] /Resources << /Font << /F1 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> >> ${image ? '/XObject << /Im1 17 0 R >>' : ''} >> /Contents ${4 + i * 2} 0 R ${rich && i === 0 ? '/Annots [11 0 R]' : ''} >>`)
+    objects.push(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${200 + i * 100} 400] /Resources << /Font << /F1 << /Type /Font /Subtype /Type1 /BaseFont /${font} >> >> ${image ? '/XObject << /Im1 17 0 R >>' : ''} >> /Rotate ${rotation} /UserUnit ${userUnit} /Contents ${4 + i * 2} 0 R ${rich && i === 0 ? '/Annots [11 0 R]' : ''} >>`)
     objects.push(`<< /Length ${Buffer.byteLength(content)} >>\nstream\n${content}endstream`)
   }
   if (rich) objects.push(

@@ -3,3 +3,10 @@
 /npm/*.node
 /npm-dist/
 /.tmp/
+
+/npm/README.md
+/npm/LICENSE-*
+/npm/NOTICE
+/npm/THIRD-PARTY-LICENSES.md
+/scripts/__pycache__/
+/tests/*.tsbuildinfo

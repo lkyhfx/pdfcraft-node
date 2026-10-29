@@ -1,0 +1,9 @@
+*
+!npm-dist/
+npm-dist/*
+!npm-dist/*.tgz
+!tests/
+!tests/**
+!npm/
+npm/*
+!npm/package.json

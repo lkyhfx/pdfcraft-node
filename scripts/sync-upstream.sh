@@ -17,11 +17,12 @@ restore() {
   rm -rf "$backup"
 }
 trap restore EXIT
-git -C upstream/pdfcraft fetch --tags origin
-git -C upstream/pdfcraft checkout --detach "$(git -C upstream/pdfcraft rev-parse --verify "$1^{commit}")"
+git -C upstream/pdfcraft fetch --depth=1 -- origin "$1"
+git -C upstream/pdfcraft checkout --detach "$(git -C upstream/pdfcraft rev-parse --verify 'FETCH_HEAD^{commit}')"
 python3 scripts/sync-patches.py
 cargo generate-lockfile --manifest-path native/Cargo.toml
 bash scripts/build-native.sh --target all
+bash scripts/test-native.sh
 npm test
 bash scripts/package-native.sh
 bash scripts/test-package.sh
@@ -30,6 +31,8 @@ from pathlib import Path
 import subprocess,sys
 p=Path('UPSTREAM.md')
 s=p.read_text()
+revision=subprocess.check_output(['git','-C','upstream/pdfcraft','rev-parse','HEAD'],text=True).strip()
+s=s.replace(s.splitlines()[2], 'PDFCraft '+sys.argv[1]+', commit `'+revision+'`.')
 s+='\nVerified sync: '+sys.argv[1]+' (`'+subprocess.check_output(['git','-C','upstream/pdfcraft','rev-parse','HEAD'],text=True).strip()+'`). Native build, API compile checks and smoke tests passed.\n'
 p.write_text(s)
 PY

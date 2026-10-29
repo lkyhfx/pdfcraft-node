@@ -53,3 +53,17 @@ test('hard cancellation, timeout, concurrency and caller buffer ownership', asyn
   const results = await Promise.all(Array.from({ length: 6 }, () => api.compressPdf(pdf())))
   assert.equal(results.length, 6)
 })
+
+test('queue capacity rejects excess work and queued cancellation releases its slot', async () => {
+  const input=pdf()
+  const jobs=Array.from({length:20},()=>api.compressPdf(input))
+  const results=await Promise.allSettled(jobs)
+  assert.equal(results.filter(r=>r.status==='fulfilled').length,18)
+  assert.ok(results.filter(r=>r.status==='rejected').every(r=>code('BUSY')(r.reason)))
+  const c=new AbortController()
+  const active=[api.compressPdf(input),api.compressPdf(input)]
+  const queued=api.compressPdf(input,{signal:c.signal})
+  c.abort()
+  await assert.rejects(queued,code('CANCELLED'))
+  await Promise.all(active)
+})

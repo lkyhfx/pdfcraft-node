@@ -1,1 +1,1 @@
-{"name":"pdfcraft-node-workspace","private":true,"scripts":{"build":"bash scripts/build-native.sh","test":"node --test tests/*.test.js","pack":"bash scripts/package-native.sh"}}
+{"name":"pdfcraft-node-workspace","private":true,"scripts":{"build":"bash scripts/build-native.sh","test":"node --test --test-isolation=none tests/*.test.js","pack":"bash scripts/package-native.sh"}}

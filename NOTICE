@@ -1,5 +1,7 @@
 pdfcraft-node
 =============
+Binding and packaging copyright (c) 2026 pdfcraft-node contributors.
+
 Direct Node-API bindings to PDFCraft, https://github.com/storytold/pdfcraft.
 PDFCraft v0.15.0, copyright ArtCraft Team and PDFCraft contributors,
 licensed under MIT OR Apache-2.0. Upstream is used without modifications.
