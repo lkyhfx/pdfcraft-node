@@ -1,0 +1,39 @@
+[package]
+name = "pdfcraft-node"
+version = "0.1.0"
+edition = "2024"
+license = "MIT OR Apache-2.0"
+publish = false
+
+[workspace]
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+pdfcraft-cos = { path = "../upstream/pdfcraft/crates/cos" }
+pdfcraft-optimize = { path = "../upstream/pdfcraft/crates/optimize" }
+pdfcraft-organize = { path = "../upstream/pdfcraft/crates/organize" }
+napi = { version = "3", default-features = false, features = ["napi9", "async"] }
+napi-derive = "3"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+libc = "0.2"
+
+[build-dependencies]
+napi-build = "2"
+
+[profile.release]
+lto = "thin"
+strip = "symbols"
+panic = "unwind"
+
+[patch.crates-io]
+hayro-interpret = { path = "../upstream/pdfcraft/vendor/hayro-interpret" }
+hayro = { path = "../upstream/pdfcraft/vendor/hayro" }
+hayro-syntax = { path = "../upstream/pdfcraft/vendor/hayro-syntax" }
+hayro-cmap = { path = "../upstream/pdfcraft/vendor/hayro-cmap" }
+hayro-postscript = { path = "../upstream/pdfcraft/vendor/hayro-postscript" }
+hayro-jbig2 = { path = "../upstream/pdfcraft/vendor/hayro-jbig2" }
+lopdf = { path = "../upstream/pdfcraft/vendor/lopdf" }
+vello_common = { path = "../upstream/pdfcraft/vendor/vello_common" }

@@ -1,0 +1,7 @@
+pdfcraft-node
+=============
+Direct Node-API bindings to PDFCraft, https://github.com/storytold/pdfcraft.
+PDFCraft v0.15.0, copyright ArtCraft Team and PDFCraft contributors,
+licensed under MIT OR Apache-2.0. Upstream is used without modifications.
+Prebuilt binaries include upstream vendored patches; see UPSTREAM.md.
+THIRD-PARTY-LICENSES.md includes Rust dependencies and bundled asset notices.

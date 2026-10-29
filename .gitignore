@@ -1,0 +1,5 @@
+/native/target/
+/node_modules/
+/npm/*.node
+/npm-dist/
+/.tmp/
