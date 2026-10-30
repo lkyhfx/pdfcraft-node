@@ -1,0 +1,20 @@
+[
+  {
+    "name": "@lkyhfx/pdfcraft-node",
+    "version": "0.1.0",
+    "dist.integrity": "sha512-epsQI6GH4KHXOaJxeVsIYqZaXW3QR1Bac+QEiijPMBWwLypLAJshLO7/1PSe0Lh4aDwu7mmlcJWOSpM7m/TZ7A==",
+    "dist.tarball": "https://registry.npmjs.org/@lkyhfx/pdfcraft-node/-/pdfcraft-node-0.1.0.tgz"
+  },
+  {
+    "name": "@lkyhfx/pdfcraft-node-linux-x64-gnu",
+    "version": "0.1.0",
+    "dist.integrity": "sha512-Z8HHq2xw9GpMWExD9i44Q5bm6I1GJTXdhIaM7I0jGz5UqE1lQbz9aFA0H6v0ngzeBHBlBIGiskFUc6OQSD0FVw==",
+    "dist.tarball": "https://registry.npmjs.org/@lkyhfx/pdfcraft-node-linux-x64-gnu/-/pdfcraft-node-linux-x64-gnu-0.1.0.tgz"
+  },
+  {
+    "name": "@lkyhfx/pdfcraft-node-linux-arm64-gnu",
+    "version": "0.1.0",
+    "dist.integrity": "sha512-N1w4+hsLscEqMGaTvVoVnMfA3DTZKX+8JziLCifyhnrSuEUJ0PK8Jlen+bjXoxMSGdVlHniBDLibNe6GctjIlw==",
+    "dist.tarball": "https://registry.npmjs.org/@lkyhfx/pdfcraft-node-linux-arm64-gnu/-/pdfcraft-node-linux-arm64-gnu-0.1.0.tgz"
+  }
+]

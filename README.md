@@ -4,6 +4,10 @@ PDFCraft Rust bindings for Node.js 24, Linux x64/arm64 glibc. No PDF command-lin
 tools are required. Prebuilt platform packages install through optionalDependencies.
 License: MIT OR Apache-2.0; third-party notices accompany every binary package.
 
+```sh
+npm install @lkyhfx/pdfcraft-node
+```
+
 ```js
 const { compressPdf, compressPdfFile } = require('@lkyhfx/pdfcraft-node')
 const smaller = await compressPdf(buffer, { mode: 'balanced', timeoutMs: 120000 })

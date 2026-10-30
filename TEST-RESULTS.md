@@ -9,8 +9,9 @@ six compression integration cases passed on x64.
 
 Final checks: **14 installed-tarball integration tests and 6 Rust tests passed**;
 `cargo clippy -- -D warnings`, shell syntax and whitespace checks passed. The same
-14 integration tests passed in `node:24-bookworm-slim` with network disabled during
-installation/test and no cargo, gs or mutool installed. Image: pdfcraft-node-test:0.1.0.
+14 integration tests passed using registry-downloaded modules in
+`node:24-bookworm-slim` with network disabled during testing and no cargo, gs or
+mutool installed. Image: pdfcraft-node-test:0.1.0.
 Main package contains JS/types/docs/notices; the two platform packages contain native
 binaries/notices. ESM named exports were smoke-checked.
 
@@ -97,3 +98,28 @@ Installed-tarball tests use offline npm with install scripts disabled.
   attachments; see README. It does not add synthetic top-level bookmarks.
 - ZIP creation, storage/upload manifests, application recovery and integration code
   are outside this generic package. Registry delivery is verified separately after publication.
+
+## Registry release 0.1.0
+
+Published all three public npm packages, platform packages before the main package:
+
+- @lkyhfx/pdfcraft-node
+- @lkyhfx/pdfcraft-node-linux-x64-gnu
+- @lkyhfx/pdfcraft-node-linux-arm64-gnu
+
+Fresh-cache installation from https://registry.npmjs.org automatically selected the
+x64 optional dependency; all 14 integration tests passed. A second fresh-cache
+installation with npm's Linux/arm64/glibc target override fetched the ARM64 optional
+dependency, whose native compression/info/duplicate-page/PDF-render/SVG-render calls
+passed under QEMU and ARM64 Node 24.10.0. The actual downloaded x64 modules were then
+mounted into a clean, network-disabled Node 24 container; all 14 tests passed again.
+Installation used --ignore-scripts and required no Rust or PDF tooling.
+
+Registry download URLs and SHA-512 integrities are recorded in
+`tests/results/registry-0.1.0.json` and match local release tarballs. Initial npm
+publication was accepted before download propagation completed; verification above
+was performed only after the registry served the packages successfully.
+
+The publish script uses explicit `./npm-dist/` paths: without `./`, npm interpreted
+the tarball path as GitHub shorthand. The corrected path passed dry-run and actual
+publication. Both upstream-sync success and dirty-worktree refusal were exercised.
